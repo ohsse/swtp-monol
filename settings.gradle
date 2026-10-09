@@ -1,0 +1,3 @@
+rootProject.name = 'swtp'
+
+include 'common', 'api', 'scheduler'

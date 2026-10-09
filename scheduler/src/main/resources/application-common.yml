@@ -1,0 +1,5 @@
+# scheduler 모듈 공통 설정. 지자체 프로파일과 무관하게 항상 로드됨.
+# spring.profiles.include: common 을 통해 활성화된다.
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true

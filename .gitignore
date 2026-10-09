@@ -1,0 +1,26 @@
+# 빌드 산출물
+.gradle/
+.gradle-user/
+build/
+out/
+**/build/
+**/out/
+**/src/main/generated/
+
+# IDE·OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# 로그·덤프
+logs/
+*.log
+*.stackdump
+
+# 로컬 설정·비밀정보 (커밋 금지)
+.env
+.mcp.json
+.claude/settings.local.json
+/.claude/worktrees/

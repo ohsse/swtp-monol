@@ -1,0 +1,36 @@
+-- ============================================================================
+-- V8_3 tag 도메인 패치 — tag_se_cd 컬럼 COMMENT 에 PWQ 반영 (8종 → 9종)
+-- ----------------------------------------------------------------------------
+-- 운영본: common/src/main/resources/db/migration/V8_3__tag_patch.sql
+-- SSOT 사본: backend/docs/ddl/tag.sql (동시 갱신 의무 — indexing-and-migration.md §5.3)
+--
+-- 배경:
+--   TagMeasurementType enum 에 PWQ(적산전력량, kWh) 가 추가되었으나
+--   (송수펌프가동이력_3번섹션 ANALYZE1 안건 1, 2026-06-02) tag_m.tag_se_cd
+--   컬럼 COMMENT 는 V8_1 시점의 8종(FQI까지) 열거로 stale 상태였다.
+--   본 패치로 코멘트를 9종(PWQ 포함) 으로 동기화한다.
+--
+-- 변경:
+--   tag_m.tag_se_cd 컬럼 COMMENT 본문 — 8종 → 9종 (PWQ 포함) 열거 갱신
+--   (스키마 변경 없음 — 코드값은 VARCHAR(20), COMMENT 카탈로그 메타만 갱신)
+--
+-- 무중단:
+--   COMMENT ON COLUMN 은 카탈로그 메타만 갱신, 운영 영향·락 없음.
+--
+-- 멱등성:
+--   COMMENT 는 마지막 실행값으로 단일 정의 (덮어쓰기 멱등).
+--
+-- 롤백 (V8_1 시점 8종 코멘트로 원복):
+--   COMMENT ON COLUMN tag_m.tag_se_cd IS '태그 측정 유형 코드 (DOM_CODE_20 — TagMeasurementType enum 매핑 FRI/PRI/LEI/PWI/RMS/OPS/VOI/FQI 8종, ot-integration.md §3 정합 — 단위 매핑은 enum 의 unit 필드로 흡수)';
+--
+-- 비고:
+--   CMD(운전제어) 코드값은 제어이력 재도입(20260604 ANALYZE) 미구현 상태이므로
+--   본 패치에 포함하지 않는다. CMD 구현 사이클에서 별도 patch 로 10종 갱신.
+--
+-- 참조:
+--   - docs/analyze/20260602/송수펌프가동이력_3번섹션/ (PWQ 도입)
+--   - .claude/rules/dict/standard-terms.md tag_se_cd 행 (PWQ 등재)
+--   - .claude/rules/db/indexing-and-migration.md §5.4 V{N} 동결 정책
+-- ============================================================================
+
+COMMENT ON COLUMN tag_m.tag_se_cd IS '태그 측정 유형 코드 (DOM_CODE_20 — TagMeasurementType enum 매핑 FRI/PRI/LEI/PWI/RMS/OPS/VOI/FQI/PWQ 9종, ot-integration.md §3 정합 — 단위 매핑은 enum 의 unit 필드로 흡수. PWQ=적산전력량 kWh, PWI(순시전력 kW)와 단위·물리 성격 분리, 송수펌프가동이력_3번섹션 ANALYZE1 2026-06-02)';

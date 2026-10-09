@@ -1,0 +1,39 @@
+-- ============================================================================
+-- V8_5 tag 도메인 패치 — tag_se_cd 컬럼 COMMENT 에 FRQ 반영 (10종 → 11종)
+-- ----------------------------------------------------------------------------
+-- 운영본: common/src/main/resources/db/migration/V8_5__tag_patch.sql
+-- SSOT 사본: backend/docs/ddl/tag.sql (동시 갱신 의무 — indexing-and-migration.md §5.3)
+--
+-- 배경:
+--   계측기 태그 시딩 작업(2026-06-10)에서 배수지(DWT) 유입·유출 유량계에 유량순시(FRI)와
+--   유량적산을 함께 등록하기 위해 TagMeasurementType enum 에 FRQ(유량적산, m³) 가 추가되고
+--   FRI 의 한글 설명이 '유량' → '유량순시' 로 변경되었다. 이에 tag_se_cd 컬럼 COMMENT 를
+--   11종(FRQ 포함) 으로 동기화한다.
+--   ※ 본 FRQ 추가는 사용자 직접 결정으로 /dev:analyze 5인 회의를 거치지 않았다
+--     (FQI/PWQ/CMD 선례와 달리 시딩 작업 중 즉시 도입). 정식 어휘 사전 등재는
+--     standard-terms.md tag_se_cd 행 갱신으로 병행한다.
+--
+-- 변경:
+--   tag_m.tag_se_cd 컬럼 COMMENT 본문 — 10종 → 11종 (FRQ 포함) 열거 갱신
+--   (스키마 변경 없음 — 코드값은 VARCHAR(20), COMMENT 카탈로그 메타만 갱신)
+--
+-- 무중단:
+--   COMMENT ON COLUMN 은 카탈로그 메타만 갱신, 운영 영향·락 없음.
+--
+-- 멱등성:
+--   COMMENT 는 마지막 실행값으로 단일 정의 (덮어쓰기 멱등).
+--
+-- 롤백 (V8_4 시점 10종 코멘트로 원복):
+--   COMMENT ON COLUMN tag_m.tag_se_cd IS '태그 측정 유형 코드 (DOM_CODE_20 — TagMeasurementType enum 매핑 FRI/PRI/LEI/PWI/RMS/OPS/VOI/FQI/PWQ/CMD 10종, ot-integration.md §3 정합 — 단위 매핑은 enum 의 unit 필드로 흡수. CMD=운전제어 io_cd=OUTPUT 제어 태그, OPS(가동상태 INPUT)와 별개. 제어이력 재도입 ANALYZE1 2026-06-04)';
+--
+-- 비고:
+--   FRQ=유량적산 (누적 적산 유량, m³). FRI(유량순시 m³/h)와 단위·물리 성격 분리 —
+--   PWI(순시전력 kW)/PWQ(적산전력량 kWh) 쌍과 동형 구조. FRI 설명도 '유량' → '유량순시' 변경.
+--
+-- 참조:
+--   - common/src/main/java/com/mo/swtp/tag/domain/enumtype/TagMeasurementType.java (FRQ 추가, FRI 설명 변경)
+--   - .claude/rules/dict/standard-terms.md tag_se_cd 행 (FRQ 등재 11종)
+--   - .claude/rules/db/indexing-and-migration.md §5.4 V{N} 동결 정책
+-- ============================================================================
+
+COMMENT ON COLUMN tag_m.tag_se_cd IS '태그 측정 유형 코드 (DOM_CODE_20 — TagMeasurementType enum 매핑 FRI/PRI/LEI/PWI/RMS/OPS/VOI/FQI/PWQ/CMD/FRQ 11종, ot-integration.md §3 정합 — 단위 매핑은 enum 의 unit 필드로 흡수. FRQ=유량적산 m³, FRI(유량순시 m³/h)와 단위·물리 성격 분리(PWI/PWQ 쌍 동형). 계측기 태그 시딩 2026-06-10)';

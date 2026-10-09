@@ -1,0 +1,75 @@
+# api 모듈 공통 설정. 지자체 프로파일과 무관하게 항상 로드됨.
+# spring.profiles.include: common 을 통해 활성화된다.
+# 주의: auth.jwt.exclude-paths 를 프로파일 yml에서 재정의하면 리스트 전체가 교체된다.
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+auth:
+  jwt:
+    secret: ${JWT_SECRET:local-dev-only-secret-change-me-0123456789}
+    issuer: ${JWT_ISSUER:swtp-api}
+    access-token-expiration-minutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:60}
+    refresh-token-expiration-days: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:7}
+    # nginx 리버스 프록시(예: dev 30080 → 30081) 가 /api 프리픽스를 떼지 않고 그대로 전달하므로
+    # swagger·api-docs 도 root 경로와 /api 프리픽스 두 그룹을 모두 등록한다 (auth 경로는 /api 형태만 사용).
+    exclude-paths:
+      - /swagger-ui/**
+      - /v3/api-docs/**
+      - /swagger-ui.html
+      - /api/swagger-ui/**
+      - /api/v3/api-docs/**
+      - /api/swagger-ui.html
+      - /error
+      - /api/auth/login
+      - /api/auth/refresh
+      # 송수펌프제어분석-2번섹션 PLAN2 §SSE 인증 1안 — SSE 구독 JWT 우회.
+      # AntPathMatcher 와일드카드 (*) 사용 의무 — {procId} literal 금지.
+      # payload 비민감화 정합 (procId+aiDrvnModCd+startDtm 3 필드 한정).
+      - /api/proc/*/ai-mode/subscribe
+      # 전력피크분석-1번섹션 PLAN1 §SSE 인프라 — 전력피크 목표값 SSE 구독 JWT 우회.
+      # 고정 경로 (path variable 없음) — 와일드카드 불요.
+      # payload 비민감화 정합 (targetPeakElpwr+updtDtm 2 필드 한정).
+      - /api/opt/peak-target/subscribe
+
+cors:
+  allowed-methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowed-headers:
+    - "*"
+  # JWT Bearer 토큰 헤더 기반 인증이며 쿠키 미사용 — false 고정.
+  allow-credentials: false
+  max-age: 3600
+
+# SpringDoc — nginx 가 /api 프리픽스를 떼지 않고 backend 로 전달하는 환경(dev 30080→30081 등) 에서
+# swagger-ui · api-docs 진입점 path 를 /api 정렬한다. 활성/비활성은 각 tenant 의 application.yml 에서
+# springdoc.api-docs.enabled · springdoc.swagger-ui.enabled 로 분기한다 (multi-tenant.md §3·§5).
+# webjar 정적 자원(/swagger-ui/**) 은 SpringDoc 가 root 에 고정 등록하므로, /api/swagger-ui/** 보조 매핑은
+# SwaggerProxyResourceConfig 가 swagger-ui 활성 시점에 추가한다.
+springdoc:
+  api-docs:
+    path: /api/v3/api-docs
+  swagger-ui:
+    path: /api/swagger-ui.html
+    config-url: /api/v3/api-docs/swagger-config
+    url: /api/v3/api-docs
+
+# 송수펌프제어분석 §7 — 시설 예측 데이터 근접매칭 윈도우 (분 단위).
+# predc_1m_h (1분 그리드) 정합 기본 5분 — 예측 그리드와 현황 acq_dtm+1h 사이 시각 오차 흡수.
+# 윈도우 과대 시 파티션 경계 교차 + 잘못된 시간대 매칭 위험.
+# 1차 정의: docs/plan/20260518/송수펌프제어분석-7번섹션/PLAN1.md §2 ANALYZE1 미해결 #1 결정.
+opt:
+  prediction:
+    match-window-minutes: 5
+  # 전력피크분석-2번섹션 PLAN1 §④ 전력피크예상시간 — 예측 지평 상한 (시간).
+  # predc_1m_h (월 RANGE 파티션, 3년 보존) 예측 합 GROUP BY+HAVING 조회 시 predc_dtm < now+horizon 상한으로
+  # 스캔 파티션을 1~2개로 제한한다 (36파티션 풀스캔 방지 — DBA 블로커 해소). 화면이 표출하는 임박 피크 시점은
+  # 통상 수 시간~1~2일 내이므로 48시간 기본. 윈도우 과대 시 파티션 경계 추가 교차 위험.
+  # 1차 정의: docs/plan/20260605/전력피크분석-2번섹션/PLAN1.md §④.
+  peak:
+    predc-horizon-hours: 48

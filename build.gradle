@@ -1,0 +1,49 @@
+import org.gradle.api.plugins.JavaPlugin
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
+plugins {
+    id 'org.springframework.boot' version '4.0.5' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
+}
+
+allprojects {
+    group = 'com.mo.swtp'
+    version = '0.0.1-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    pluginManager.withPlugin('java') {
+        apply plugin: 'io.spring.dependency-management'
+
+        java {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(21)
+            }
+        }
+
+        dependencies {
+            compileOnly 'org.projectlombok:lombok:1.18.44'
+            annotationProcessor 'org.projectlombok:lombok:1.18.44'
+
+            testImplementation platform('org.junit:junit-bom:5.13.4')
+            testImplementation 'org.junit.jupiter:junit-jupiter'
+            testImplementation 'org.mockito:mockito-core:5.20.0'
+            testImplementation 'org.assertj:assertj-core:3.27.4'
+            testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+}

@@ -1,0 +1,26 @@
+spring:
+  profiles:
+    include: common
+  datasource:
+    url: ${DB_URL:jdbc:p6spy:postgresql://localhost:5432/smartwtp}
+    username: ${DB_USERNAME:smartwtp}
+    password: ${DB_PASSWORD:smartwtp}
+    driver-class-name: com.p6spy.engine.spy.P6SpyDriver
+  jpa:
+    hibernate:
+      ddl-auto: update  # 로컬 개발 편의를 위해 엔티티 변경 시 스키마 자동 반영
+    properties:
+      hibernate:
+        format_sql: false
+        show_sql: false
+
+server:
+  port: 8080
+
+# SpringDoc — 로컬 개발 편의를 위해 활성화.
+# 본 항목은 tenant 별로 변하므로 application-common.yml 이 아닌 본 파일에 명시한다 (multi-tenant.md §3·§5).
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

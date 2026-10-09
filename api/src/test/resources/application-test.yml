@@ -1,0 +1,18 @@
+spring:
+  # test 프로파일이 활성화되면 LoggingNoOpScadaAdapter 가 자동 로드된다 —
+  # @Profile({"default","local","dev","test","scada-noop"}) 매칭에 test 포함.
+  # spring.profiles.active 는 외부 설정 파일에서 사용 금지(Spring Boot 4 InvalidConfigDataPropertyException) —
+  # 프로파일 활성화는 @ActiveProfiles 또는 spring.profiles.include 로 한다.
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smartwtp
+    username: ${SPRING_DATASOURCE_USERNAME:smartwtp}
+    password: ${SPRING_DATASOURCE_PASSWORD:smartwtp}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      # 테스트 실행 시 스키마 자동 생성, 종료 시 삭제
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true

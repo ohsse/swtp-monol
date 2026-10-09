@@ -1,0 +1,57 @@
+plugins {
+    id 'java-library'
+}
+
+def generatedDir = "${buildDir}/generated/sources/annotationProcessor/java/main"
+
+dependencies {
+    compileOnly 'jakarta.persistence:jakarta.persistence-api:3.2.0'
+    // 도메인 이벤트 인프라: 타입 참조만 필요 (런타임은 api/scheduler의 spring-boot-starter-data-jpa 제공)
+    // common에 Spring BOM이 없으므로 버전을 명시 (api 모듈 의존성 기준으로 맞춤)
+    compileOnly 'org.springframework.data:spring-data-jpa:4.0.4'
+    compileOnly 'org.springframework:spring-context:7.0.6'
+    testImplementation 'org.springframework.data:spring-data-jpa:4.0.4'
+    testImplementation 'org.springframework:spring-context:7.0.6'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.20.0'
+    // testCompileJava 시 main 엔티티가 사용하는 jakarta.persistence enum 상수 resolve용 (compileOnly 의도 유지)
+    testImplementation 'jakarta.persistence:jakarta.persistence-api:3.2.0'
+
+    api 'io.swagger.core.v3:swagger-annotations-jakarta:2.2.43'
+    // Jackson @JsonFormat (BaseAuditResponseDto) — 런타임은 api/scheduler 의 spring-boot-starter-web 이 jackson-databind 로 제공
+    compileOnly 'com.fasterxml.jackson.core:jackson-annotations:2.18.0'
+    testImplementation 'com.fasterxml.jackson.core:jackson-annotations:2.18.0'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.0'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.0'
+    implementation 'com.querydsl:querydsl-core:5.1.0'
+    api 'io.jsonwebtoken:jjwt-api:0.12.7'
+
+    // p6spy SQL 로깅 (api/scheduler 모듈로 전이)
+    api 'p6spy:p6spy:3.9.1'
+    // SQL pretty-print용 (CustomP6SpySqlFormatter에서 BasicFormatterImpl 사용)
+    // compileOnly: api/scheduler가 spring-boot-starter-data-jpa를 통해 hibernate-core를 런타임에 제공하므로
+    // common 모듈에 runtime 전이를 중복 추가하지 않음. JPA 의존성이 제거되면 implementation으로 전환 필요.
+    compileOnly 'org.hibernate.orm:hibernate-core:7.0.0.Final'
+
+    annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api:3.2.0'
+    annotationProcessor 'jakarta.annotation:jakarta.annotation-api:3.0.0'
+
+    testRuntimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
+    testRuntimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir generatedDir
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.getGeneratedSourceOutputDirectory().set(file(generatedDir))
+}
+
+tasks.named('clean') {
+    delete file(generatedDir)
+}

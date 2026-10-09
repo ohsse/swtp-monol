@@ -1,0 +1,41 @@
+# GS(거제) 지자체 빌드 프로파일 오버라이드 — pumpcontrol 도입 시 예시
+# 사용법: ./gradlew.bat :api:bootJar -Pprofile=gs
+# multi-tenant.md §2 형식 준수 — DB·SCADA·AI 서버 등 지자체별 차이만 명시
+spring:
+  profiles:
+    include: common
+    # 지자체에 배포된 PLC 어댑터 활성화 (Modbus TCP). 다른 지자체는 scada-opcua 등으로 교체
+    active: scada-modbus
+  datasource:
+    # 지자체 운영 DB — 자격증명은 환경 변수 주입, 하드코딩 금지
+    url: ${DB_URL:jdbc:p6spy:postgresql://gs-db:5432/smartwtp}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.p6spy.engine.spy.P6SpyDriver
+  jpa:
+    hibernate:
+      # 운영 환경에서는 자동 DDL 비활성 — 마이그레이션 스크립트로 통제
+      ddl-auto: none
+
+# 지자체 AI 예측 서버 — 사내망 호스트로 교체
+ai:
+  server:
+    base-url: ${AI_SERVER_BASE_URL:http://gs-ai:8000}
+
+# SCADA 송신 타임아웃 — 사이트별 PLC 응답 특성에 맞춰 조정 가능
+scada:
+  outbound:
+    timeout-seconds: ${SCADA_OUTBOUND_TIMEOUT_SECONDS:3}
+
+# 운영 CORS — common 의 dev origin 리스트를 전체 교체한다. 운영 도메인은 환경변수로 주입.
+cors:
+  # 콤마 구분 문자열 단일 placeholder — application-common.yml §cors 주석 참조.
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://swtp.gs.go.kr}
+
+# SpringDoc — 운영(gs) 환경 보안 차원 비활성. 외부 노출 없이 사내망 한정 운영으로 변경되어 Swagger 가 필요해지면 true 로 재검토.
+# 본 항목은 tenant 별로 변하므로 application-common.yml 이 아닌 본 파일에 명시한다 (multi-tenant.md §3·§5).
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

@@ -1,0 +1,78 @@
+spring:
+  application:
+    name: swtp-api
+  profiles:
+    include: common
+  datasource:
+    url: ${DB_URL:jdbc:p6spy:postgresql://localhost:5432/smartwtp}
+    username: ${DB_USERNAME:smartwtp}
+    password: ${DB_PASSWORD:smartwtp}
+    driver-class-name: com.p6spy.engine.spy.P6SpyDriver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        # p6spy가 SQL 포매팅 및 파라미터 바인딩을 담당하므로 비활성화
+        format_sql: false
+        show_sql: false
+  # 펌프 마스터 존재 확인 캐시 (PumpMasterCacheService) — Caffeine 5분 TTL
+  cache:
+    type: caffeine
+    cache-names: pumpMasterExists
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=5m
+
+server:
+  port: 8080
+
+# AI 예측 서버 연동 설정 (pumpcontrol — AiServerClient)
+ai:
+  server:
+    base-url: ${AI_SERVER_BASE_URL:http://localhost:8000}
+
+# SCADA 아웃바운드 설정 (pumpcontrol — ScadaOutboundPort 어댑터)
+scada:
+  outbound:
+    timeout-seconds: ${SCADA_OUTBOUND_TIMEOUT_SECONDS:3}
+
+# 펌프 제어 도메인 운영 설정
+pumpcontrol:
+  scada:
+    timeout-minutes: ${PUMPCONTROL_SCADA_TIMEOUT_MINUTES:5}
+
+# 회복성 (Resilience4j) — AI 예측 + SCADA 아웃바운드 (ot-integration.md §4)
+resilience4j:
+  circuitbreaker:
+    instances:
+      aiPrediction:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        sliding-window-size: 10
+        permitted-number-of-calls-in-half-open-state: 3
+      scadaOutbound:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        sliding-window-size: 10
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      aiPrediction:
+        max-attempts: 3
+        wait-duration: 500ms
+      scadaOutbound:
+        max-attempts: 3
+        wait-duration: 500ms
+
+swagger:
+  servers:
+    - url: http://localhost:8080
+      description: 로컬
+# CORS 정책. 운영 환경에서는 resources-env/{프로파일}/application.yml 의 cors.allowed-origins 가
+# 본 리스트를 전체 교체한다 (auth.jwt.exclude-paths 와 동일 동작).
+cors:
+  # 콤마 구분 문자열 단일 placeholder — Spring Boot ConfigurationProperties 가 List<String> 로 자동 split.
+  # YAML list 형식(`- ${VAR:a,b,c}`) 으로 두면 placeholder default 가 list 의 1개 원소(콤마 포함 단일 문자열) 로 들어가
+  # CorsConfiguration.checkOrigin() 매칭이 항상 실패한다.
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8080,http://localhost:3000,http://localhost:5173}

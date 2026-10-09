@@ -1,0 +1,36 @@
+-- ============================================================================
+-- V8_4 tag 도메인 패치 — tag_se_cd 컬럼 COMMENT 에 CMD 반영 (9종 → 10종)
+-- ----------------------------------------------------------------------------
+-- 운영본: common/src/main/resources/db/migration/V8_4__tag_patch.sql
+-- SSOT 사본: backend/docs/ddl/tag.sql (동시 갱신 의무 — indexing-and-migration.md §5.3)
+--
+-- 배경:
+--   제어이력 재도입(제어이력 재도입 ANALYZE1 안건 5, 2026-06-04)으로
+--   TagMeasurementType enum 에 CMD(운전제어) 가 추가되었다. 직전 V8_3 패치는
+--   PWQ 까지 9종만 반영하고 CMD 는 "구현 사이클에서 별도 patch" 로 보류했으므로,
+--   본 패치로 tag_se_cd 컬럼 COMMENT 를 10종(CMD 포함) 으로 동기화한다.
+--
+-- 변경:
+--   tag_m.tag_se_cd 컬럼 COMMENT 본문 — 9종 → 10종 (CMD 포함) 열거 갱신
+--   (스키마 변경 없음 — 코드값은 VARCHAR(20), COMMENT 카탈로그 메타만 갱신)
+--
+-- 무중단:
+--   COMMENT ON COLUMN 은 카탈로그 메타만 갱신, 운영 영향·락 없음.
+--
+-- 멱등성:
+--   COMMENT 는 마지막 실행값으로 단일 정의 (덮어쓰기 멱등).
+--
+-- 롤백 (V8_3 시점 9종 코멘트로 원복):
+--   COMMENT ON COLUMN tag_m.tag_se_cd IS '태그 측정 유형 코드 (DOM_CODE_20 — TagMeasurementType enum 매핑 FRI/PRI/LEI/PWI/RMS/OPS/VOI/FQI/PWQ 9종, ot-integration.md §3 정합 — 단위 매핑은 enum 의 unit 필드로 흡수. PWQ=적산전력량 kWh, PWI(순시전력 kW)와 단위·물리 성격 분리, 송수펌프가동이력_3번섹션 ANALYZE1 2026-06-02)';
+--
+-- 비고:
+--   CMD=운전제어 (io_cd='OUTPUT' 펌프 제어 태그 식별용, 단위 없음). 가동상태 OPS(INPUT)와
+--   별개 제어 태그. enum 의미 "측정유형 → 신호유형(Signal Type)" 재해석.
+--
+-- 참조:
+--   - docs/analyze/20260604/송수펌프제어이력_2_3번섹션/ (CMD 도입)
+--   - .claude/rules/dict/standard-terms.md tag_se_cd 행 (CMD 등재 10종)
+--   - .claude/rules/db/indexing-and-migration.md §5.4 V{N} 동결 정책
+-- ============================================================================
+
+COMMENT ON COLUMN tag_m.tag_se_cd IS '태그 측정 유형 코드 (DOM_CODE_20 — TagMeasurementType enum 매핑 FRI/PRI/LEI/PWI/RMS/OPS/VOI/FQI/PWQ/CMD 10종, ot-integration.md §3 정합 — 단위 매핑은 enum 의 unit 필드로 흡수. CMD=운전제어 io_cd=OUTPUT 제어 태그, OPS(가동상태 INPUT)와 별개. 제어이력 재도입 ANALYZE1 2026-06-04)';

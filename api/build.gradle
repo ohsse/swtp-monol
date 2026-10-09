@@ -1,0 +1,61 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'java'
+}
+
+/**
+ * 지자체별 환경 프로파일 빌드 설정.
+ * 사용법: ./gradlew.bat :api:bootJar -Pprofile={지자체코드}
+ * 미지정 시 기본값 'common' → resources-env/common/ 없으므로 resources/ 기본 파일만 사용
+ */
+ext.profile = (!project.hasProperty('profile') || !profile) ? 'common' : profile
+
+sourceSets {
+    main {
+        resources {
+            srcDirs "src/main/resources-env/${profile}"
+        }
+    }
+}
+
+// INCLUDE: resources-env/${profile}의 파일이 resources/ 기본 파일을 오버라이드하도록 허용.
+// Gradle은 나중에 추가된 srcDir(resources-env)의 파일을 우선 적용한다.
+tasks.named("processResources") {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+dependencies {
+    implementation project(':common')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.0'
+    implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
+    // AI 서버 HTTP 연동·SCADA 아웃바운드 회복성 (CircuitBreaker·Retry) — pumpcontrol TASK1-2 도입
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.2.0'
+    implementation 'io.github.resilience4j:resilience4j-retry:2.2.0'
+    // 펌프 마스터 존재 확인 캐시 (5분 TTL) — Caffeine 없이 starter-cache 는 ConcurrentMapCache (TTL 미지원)
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+    // 운전현황 분석 다운로드 (XLSX/CSV) — 송수펌프제어_운전현황분석 PLAN1 도입
+    implementation 'org.apache.poi:poi-ooxml:5.3.0'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.7'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.7'
+
+    implementation 'org.springframework.security:spring-security-crypto'
+
+    runtimeOnly 'org.postgresql:postgresql'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+bootJar {
+    archiveFileName = 'api.jar'
+}
+
+jar {
+    enabled = false
+}

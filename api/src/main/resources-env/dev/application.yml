@@ -1,0 +1,45 @@
+# 개발 서버(dev) 빌드 프로파일 오버라이드
+# 사용법: ./gradlew.bat :api:bootJar -Pprofile=dev
+# nginx 가 30080 의 /api/ 경로를 30081 backend 로 reverse-proxy 함
+spring:
+  profiles:
+    include: common
+  datasource:
+    # dev 서버 PostgreSQL — 자격증명은 환경 변수 주입, 하드코딩 금지
+    url: ${DB_URL:jdbc:p6spy:postgresql://localhost:5432/swtp}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.p6spy.engine.spy.P6SpyDriver
+  jpa:
+    hibernate:
+      # 개발 서버는 마이그레이션 스크립트로 통제 — 자동 DDL 비활성
+      ddl-auto: none
+
+# api 모듈 포트 — nginx 가 30080 → /api/ → 30081 로 프록시
+server:
+  port: 30081
+
+# 운영성 origin — common 의 dev origin 리스트를 전체 교체
+# 브라우저는 nginx 가 서빙하는 30080 origin 으로 요청 → backend 는 그 origin 만 허용
+cors:
+  # 콤마 구분 문자열 단일 placeholder — application-common.yml §cors 주석 참조.
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:30080,http://localhost:30080,http://localhost:30081,http://localhost:5173,http://localhost:3000}
+
+# SpringDoc — 사내 dev 서버에서 API 명세 확인 편의를 위해 활성화.
+# 향후 dev 가 외부 노출 환경으로 바뀌면 false 로 변경 검토.
+# 본 항목은 tenant 별로 변하므로 application-common.yml 이 아닌 본 파일에 명시한다 (multi-tenant.md §3·§5).
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+# Swagger UI 의 servers 드롭다운에 노출할 base URL 목록 (dev 양쪽 동선).
+# url 에는 컨트롤러 매핑 prefix(/api) 를 포함하지 않는다 — OpenAPI spec path 가 이미 /api 를 포함하므로
+# server.url 에 또 넣으면 이중 prefix(/api/api/...) 가 된다.
+swagger:
+  servers:
+    - url: http://localhost:30080
+      description: dev (nginx 경유 30080)
+    - url: http://localhost:30081
+      description: dev (backend 직접 30081)
